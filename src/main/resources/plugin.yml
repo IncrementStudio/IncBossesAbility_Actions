@@ -2,6 +2,8 @@ name: IncBossesAbility_Actions
 version: '${project.version}'
 main: ru.incrementstudio.incbosses.abilities.incbossesability_actions.Main
 api-version: '1.16'
-authors: [IncrementStudio++]
-description: Модуль для плагина IncBosses, добавляющий возможность выполнения различных действий при спавне, смерти или смене фаз босса!
-website: https://incrementstudio.ru
+author: IncrementStudio++
+description: Способность для плагина IncBosses, добавляющий возможность выполнения различных действий при спавне, смерти или смене фаз босса!
+website: incrementstudio.ru
+softdepend:
+  - PlaceholderAPI

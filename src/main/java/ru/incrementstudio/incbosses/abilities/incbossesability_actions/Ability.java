@@ -1,5 +1,6 @@
 package ru.incrementstudio.incbosses.abilities.incbossesability_actions;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -8,8 +9,11 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import ru.incrementstudio.incapi.utils.ColorUtil;
+import ru.incrementstudio.incapi.utils.EffectUtil;
 import ru.incrementstudio.incapi.utils.MathUtil;
 import ru.incrementstudio.incapi.utils.PhysicUtil;
 import ru.incrementstudio.incbosses.api.AbilityBase;
@@ -26,39 +30,38 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class Ability extends AbilityBase {
     private final Boss boss;
-    private final Map<String, String> startActions = new HashMap<>(); // start_reason: CHANGE_PHASE | SPAWN
+    private final List<String> startActions = new ArrayList<>();
     private final double startPlayersActionsRadius;
-    private final Map<String, String> startPlayersActions = new HashMap<>(); // start_reason: CHANGE_PHASE | SPAWN
-    private final Map<String, String> startFightersActions = new HashMap<>(); // start_reason: CHANGE_PHASE | SPAWN
-    private final Map<String, String> stopActions = new HashMap<>(); // stop_reason: CHANGE_PHASE | DEATH
+    private final List<String> startPlayersActions = new ArrayList<>();
+    private final List<String> startFightersActions = new ArrayList<>();
+    private final List<String> stopActions = new ArrayList<>();
     private final double stopPlayersActionsRadius;
-    private final Map<String, String> stopPlayersActions = new HashMap<>(); // stop_reason: CHANGE_PHASE | DEATH
-    private final Map<String, String> stopFightersActions = new HashMap<>(); // stop_reason: CHANGE_PHASE | DEATH
-    private final Map<String, String> spawnActions = new HashMap<>(); // start_reason: SPAWN
+    private final List<String> stopPlayersActions = new ArrayList<>();
+    private final List<String> stopFightersActions = new ArrayList<>();
+    private final List<String> spawnActions = new ArrayList<>();
     private final double spawnPlayersActionsRadius;
-    private final Map<String, String> spawnPlayersActions = new HashMap<>(); // start_reason: SPAWN
-    private final Map<String, String> spawnFightersActions = new HashMap<>(); // start_reason: SPAWN
-    private final Map<String, String> deathActions = new HashMap<>(); // stop_reason: DEATH
+    private final List<String> spawnPlayersActions = new ArrayList<>();
+    private final List<String> spawnFightersActions = new ArrayList<>();
+    private final List<String> deathActions = new ArrayList<>();
     private final double deathPlayersActionsRadius;
-    private final Map<String, String> deathPlayersActions = new HashMap<>(); // stop_reason: DEATH
-    private final Map<String, String> deathFightersActions = new HashMap<>(); // stop_reason: DEATH
-    private final Map<String, String> notSpawnActions = new HashMap<>(); // start_reason: CHANGE_PHASE
+    private final List<String> deathPlayersActions = new ArrayList<>();
+    private final List<String> deathFightersActions = new ArrayList<>();
+    private final List<String> notSpawnActions = new ArrayList<>();
     private final double notSpawnPlayersActionsRadius;
-    private final Map<String, String> notSpawnPlayersActions = new HashMap<>(); // start_reason: CHANGE_PHASE
-    private final Map<String, String> notSpawnFightersActions = new HashMap<>(); // start_reason: CHANGE_PHASE
-    private final Map<String, String> notDeathActions = new HashMap<>(); // stop_reason: CHANGE_PHASE
+    private final List<String> notSpawnPlayersActions = new ArrayList<>();
+    private final List<String> notSpawnFightersActions = new ArrayList<>();
+    private final List<String> notDeathActions = new ArrayList<>();
     private final double notDeathPlayersActionsRadius;
-    private final Map<String, String> notDeathPlayersActions = new HashMap<>(); // stop_reason: CHANGE_PHASE
-    private final Map<String, String> notDeathFightersActions = new HashMap<>(); // stop_reason: CHANGE_PHASE
+    private final List<String> notDeathPlayersActions = new ArrayList<>();
+    private final List<String> notDeathFightersActions = new ArrayList<>();
 
     public Ability(Boss boss, Phase phase, FileConfiguration bossConfig, ConfigurationSection abilityConfig) {
         super(boss, phase, bossConfig, abilityConfig);
@@ -95,14 +98,10 @@ public class Ability extends AbilityBase {
         fillActions(notDeathFightersActions, "not-death-fighters-actions");
     }
 
-    private void fillActions(Map<String, String> actionsMap, String path) {
+    private void fillActions(List<String> actionsMap, String path) {
         if (abilityConfig.contains(path)) {
             List<String> actions = abilityConfig.getStringList(path);
-            for (String action : actions) {
-                String[] actionParts = getAction(action);
-                if (actionParts == null) continue;
-                actionsMap.put(actionParts[0], actionParts[1]);
-            }
+            actionsMap.addAll(actions);
         }
     }
 
@@ -129,10 +128,12 @@ public class Ability extends AbilityBase {
         return null;
     }
 
-    private void executeBosses(Map<String, String> actions) {
-        for (Map.Entry<String, String> entry : actions.entrySet()) {
-            String action = entry.getKey();
-            String value = entry.getValue();
+    private void executeBosses(List<String> actions) {
+        for (String string : actions) {
+            String[] stringsElems = getAction(string);
+            if (stringsElems == null) continue;
+            String action = stringsElems[0];
+            String value = stringsElems[1];
 
             long delay = 0;
             long period = 0;
@@ -160,9 +161,9 @@ public class Ability extends AbilityBase {
                                 else if (delayMetric.equalsIgnoreCase("m") || delayMetric.equalsIgnoreCase("min"))
                                     delay = delayValue * 20 * 60;
                                 else
-                                    Main.logger().warn("Неверная единица измерения в '" + actionArgumentsMatcher.group(0) + "': '" + delayMetric + "'!");
+                                    Main.logger().error("Неверная единица измерения в '" + actionArgumentsMatcher.group(0) + "': '" + delayMetric + "'!");
                             } else {
-                                AbilityPlugin.logger().warn("Значение параметра '" + argName + "' имеет неверный формат: '" + argValue + "'!");
+                                AbilityPlugin.logger().error("Значение параметра '" + argName + "' имеет неверный формат: '" + argValue + "'!");
                             }
                         } else if (argName.equalsIgnoreCase("period") || argName.equalsIgnoreCase("per") || argName.equalsIgnoreCase("p")) {
                             Matcher periodMatcher = Pattern.compile("^(\\d+)(\\w+)$").matcher(argValue);
@@ -176,9 +177,9 @@ public class Ability extends AbilityBase {
                                 else if (delayMetric.equalsIgnoreCase("m") || delayMetric.equalsIgnoreCase("min"))
                                     period = periodValue * 20 * 60;
                                 else
-                                    Main.logger().warn("Неверная единица измерения в '" + actionArgumentsMatcher.group(0) + "': '" + delayMetric + "'!");
+                                    Main.logger().error("Неверная единица измерения в '" + actionArgumentsMatcher.group(0) + "': '" + delayMetric + "'!");
                             } else {
-                                AbilityPlugin.logger().warn("Значение параметра '" + argName + "' имеет неверный формат: '" + argValue + "'!");
+                                AbilityPlugin.logger().error("Значение параметра '" + argName + "' имеет неверный формат: '" + argValue + "'!");
                             }
                         } else if (argName.equalsIgnoreCase("repeats") || argName.equalsIgnoreCase("rep") || argName.equalsIgnoreCase("r")) {
                             Matcher repeatMathcer = Pattern.compile("^(\\d+)$").matcher(argValue);
@@ -189,17 +190,17 @@ public class Ability extends AbilityBase {
                             } else if (argValue.equalsIgnoreCase("while_phase")) {
                                 repeats = -2;
                             } else {
-                                AbilityPlugin.logger().warn("Значение параметра '" + argName + "' имеет неверный формат: '" + argValue + "'!");
+                                AbilityPlugin.logger().error("Значение параметра '" + argName + "' имеет неверный формат: '" + argValue + "'!");
                             }
                         } else {
-                            AbilityPlugin.logger().warn("Параметр '" + argName + "' не найден!");
+                            AbilityPlugin.logger().error("Параметр '" + argName + "' не найден!");
                         }
                     } else {
-                        AbilityPlugin.logger().warn("Аргумент '" + arg + "' имеет неверный формат!");
+                        AbilityPlugin.logger().error("Аргумент '" + arg + "' имеет неверный формат!");
                     }
                 }
             } else if (!Pattern.compile("^(\\w+)$").matcher(action).matches()) {
-                Main.logger().warn("Неверное действие: '" + action + "'");
+                Main.logger().error("Неверное действие: '" + action + "'");
                 continue;
             }
 
@@ -211,7 +212,7 @@ public class Ability extends AbilityBase {
                                 delay, period, repeats
                         );
                     } else {
-                        Main.logger().warn("[console] Ожидается 1 аргумент: <command>");
+                        Main.logger().error("[console] Ожидается 1 аргумент: <command>");
                     }
                     break;
                 }
@@ -219,10 +220,11 @@ public class Ability extends AbilityBase {
                     if (value != null) {
                         ActionTask.create(boss,
                                 () -> Main.getInstance().getServer().dispatchCommand(boss.getEntity(), value),
+                                () -> boss.getEntity() == null,
                                 delay, period, repeats
                         );
                     } else {
-                        Main.logger().warn("[command] Ожидается 1 аргумент: <command>");
+                        Main.logger().error("[command] Ожидается 1 аргумент: <command>");
                     }
                     break;
                 }
@@ -256,19 +258,21 @@ public class Ability extends AbilityBase {
                                                             pitch
                                                     );
                                                 }
-                                            }, delay, period, repeats
+                                            },
+                                            () -> boss.getEntity() == null,
+                                            delay, period, repeats
                                     );
                                 } catch (NumberFormatException e) {
-                                    Main.logger().warn("[sound] Третий аргумент должен быть числом");
+                                    Main.logger().error("[sound] Третий аргумент должен быть числом");
                                 }
                             } catch (NumberFormatException e) {
-                                Main.logger().warn("[sound] Второй аргумент должен быть числом");
+                                Main.logger().error("[sound] Второй аргумент должен быть числом");
                             }
                         } else {
-                            Main.logger().warn("[sound] Ожидается 3 аргумента: <sound>:<volume>:<pitch>");
+                            Main.logger().error("[sound] Ожидается 3 аргумента: <sound>:<volume>:<pitch>");
                         }
                     } else {
-                        Main.logger().warn("[sound] Ожидается 3 аргумента: <sound>:<volume>:<pitch>");
+                        Main.logger().error("[sound] Ожидается 3 аргумента: <sound>:<volume>:<pitch>");
                     }
                     break;
                 }
@@ -282,19 +286,20 @@ public class Ability extends AbilityBase {
                                     double attributeValue = Double.parseDouble(elements[1]);
                                     ActionTask.create(boss,
                                             () -> boss.getEntity().getAttribute(attribute).setBaseValue(attributeValue),
+                                            () -> boss.getEntity() == null,
                                             delay, period, repeats
                                     );
                                 } catch (NumberFormatException e) {
-                                    Main.logger().warn("[attribute] Второй аргумент должен быть числом");
+                                    Main.logger().error("[attribute] Второй аргумент должен быть числом");
                                 }
                             } catch (IllegalArgumentException e) {
-                                Main.logger().warn("[attribute] Первый аргумент должен быть названием аттрибута");
+                                Main.logger().error("[attribute] Первый аргумент должен быть названием аттрибута");
                             }
                         } else {
-                            Main.logger().warn("[attribute] Ожидается 2 аргумента: <attribute>:<value>");
+                            Main.logger().error("[attribute] Ожидается 2 аргумента: <attribute>:<value>");
                         }
                     } else {
-                        Main.logger().warn("[attribute] Ожидается 2 аргумента: <attribute>:<value>");
+                        Main.logger().error("[attribute] Ожидается 2 аргумента: <attribute>:<value>");
                     }
                     break;
                 }
@@ -317,19 +322,21 @@ public class Ability extends AbilityBase {
                                                         location[0],
                                                         count
                                                 );
-                                            }, delay, period, repeats
+                                            },
+                                            () -> boss.getEntity() == null,
+                                            delay, period, repeats
                                     );
                                 } catch (NumberFormatException e) {
-                                    Main.logger().warn("[particles] Второй аргумент должен быть целым числом");
+                                    Main.logger().error("[particles] Второй аргумент должен быть целым числом");
                                 }
                             } catch (IllegalArgumentException e) {
-                                Main.logger().warn("[particles] Первый аргумент должен быть названием частицы");
+                                Main.logger().error("[particles] Первый аргумент должен быть названием частицы");
                             }
                         } else {
-                            Main.logger().warn("[particles] Ожидается 2 аргумента: <particle>:<count>");
+                            Main.logger().error("[particles] Ожидается 2 аргумента: <particle>:<count>");
                         }
                     } else {
-                        Main.logger().warn("[particles] Ожидается 2 аргумента: <particle>:<count>");
+                        Main.logger().error("[particles] Ожидается 2 аргумента: <particle>:<count>");
                     }
                     break;
                 }
@@ -342,43 +349,39 @@ public class Ability extends AbilityBase {
                                 if (radius >= 0) {
                                     try {
                                         double power = Double.parseDouble(elements[1]);
-                                        if (power >= 0) {
-                                            ActionTask.create(boss,
-                                                    () -> {
-                                                        List<Player> players = boss.getEntity().getNearbyEntities(radius, radius, radius).stream()
-                                                                .filter(x -> x instanceof Player)
-                                                                .filter(x -> boss.getEntity().getLocation().distance(x.getLocation()) <= radius)
-                                                                .map(x -> (Player) x)
-                                                                .collect(Collectors.toList());
-                                                        for (Player player : players) {
-                                                            double distance = boss.getEntity().getLocation().distance(player.getLocation());
-                                                            double pushPower = MathUtil.inverseLerp(radius, 0, distance) * power;
-                                                            try {
-                                                                PhysicUtil.pushEntity(player, boss.getEntity().getLocation(), pushPower);
-                                                            } catch (IllegalArgumentException ignore) {
-                                                            }
+                                        ActionTask.create(boss,
+                                                () -> {
+                                                    List<Player> players = boss.getEntity().getNearbyEntities(radius, radius, radius).stream()
+                                                            .filter(x -> x instanceof Player)
+                                                            .filter(x -> boss.getEntity().getLocation().distance(x.getLocation()) <= radius)
+                                                            .map(x -> (Player) x)
+                                                            .collect(Collectors.toList());
+                                                    for (Player player : players) {
+                                                        double distance = boss.getEntity().getLocation().distance(player.getLocation());
+                                                        double pushPower = MathUtil.inverseLerp(radius, 0, distance) * power;
+                                                        try {
+                                                            PhysicUtil.pushEntity(player, boss.getEntity().getLocation(), pushPower);
+                                                        } catch (IllegalArgumentException ignore) {
                                                         }
-                                                    },
-                                                    () -> boss.getEntity() == null,
-                                                    delay, period, repeats
-                                            );
-                                        } else {
-                                            Main.logger().warn("[push] Второй аргумент должен быть неотрицательным числом");
-                                        }
+                                                    }
+                                                },
+                                                () -> boss.getEntity() == null,
+                                                delay, period, repeats
+                                        );
                                     } catch (NumberFormatException e) {
-                                        Main.logger().warn("[push] Второй аргумент должен быть неотрицательным числом");
+                                        Main.logger().error("[push] Второй аргумент должен быть числом");
                                     }
                                 } else {
-                                    Main.logger().warn("[push] Первый аргумент должен быть неотрицательным числом");
+                                    Main.logger().error("[push] Первый аргумент должен быть неотрицательным числом");
                                 }
                             } catch (NumberFormatException e) {
-                                Main.logger().warn("[push] Первый аргумент должен быть неотрицательным числом");
+                                Main.logger().error("[push] Первый аргумент должен быть неотрицательным числом");
                             }
                         } else {
-                            Main.logger().warn("[push] Ожидается 2 аргумента: <radius>:<power>");
+                            Main.logger().error("[push] Ожидается 2 аргумента: <radius>:<power>");
                         }
                     } else {
-                        Main.logger().warn("[push] Ожидается 2 аргумента: <radius>:<power>");
+                        Main.logger().error("[push] Ожидается 2 аргумента: <radius>:<power>");
                     }
                     break;
                 }
@@ -392,128 +395,136 @@ public class Ability extends AbilityBase {
                                 () -> {
                                     try {
                                         Bindings bindings = engine.createBindings();
-                                        bindings.put("params", value);
+                                        bindings.put("arg", value);
                                         bindings.put("boss", boss);
                                         engine.eval(Files.newBufferedReader(actionFile.toPath(), StandardCharsets.UTF_8), bindings);
                                     } catch (ScriptException e) {
-                                        Main.logger().warn("При выполнении скрипта '" + finalAction + ".js' произошла ошибка!");
+                                        Main.logger().error("[" + finalAction + "] При выполнении скрипта '" + finalAction + ".js' произошла ошибка!");
+                                        Main.logger().error(e.getMessage());
                                     } catch (IOException e) {
-                                        Main.logger().warn("Файл '" + finalAction + ".js' не найден!");
+                                        Main.logger().error("[" + finalAction + "] Файл '" + finalAction + ".js' не найден!");
                                     }
                                 }, delay, period, repeats
                         );
                     } else {
-                        Main.logger().warn("Файл '" + action + ".js' не найден!");
+                        Main.logger().error("[" + action + "] Файл '" + action + ".js' не найден!");
                     }
                 }
             }
         }
     }
-    private void executePlayers(Map<String, String> actions, List<Player> players) {
-        for (Map.Entry<String, String> entry : actions.entrySet()) {
-            for (Player player : players) {
-                String action = entry.getKey();
-                String value = entry.getValue();
+    private void executePlayers(List<String> actions, List<Player> players) {
+        for (String string : actions) {
+            String[] stringsElems = getAction(string);
+            if (stringsElems == null) continue;
+            String action = stringsElems[0];
+            String value = stringsElems[1];
 
-                long delay = 0;
-                long period = 0;
-                int repeats = 1;
+            long delay = 0;
+            long period = 0;
+            int repeats = 1;
 
-                Matcher actionArgumentsMatcher = Pattern.compile("^(\\w+)\\((.*)\\)$").matcher(action);
-                if (actionArgumentsMatcher.matches()) {
-                    action = actionArgumentsMatcher.group(1);
-                    String args = actionArgumentsMatcher.group(2);
-                    String[] arguments = args.split(";");
-                    for (String arg : arguments) {
-                        Matcher argumentMatcher = Pattern.compile("^(\\w+)=(.*)$").matcher(arg);
-                        if (argumentMatcher.matches()) {
-                            String argName = argumentMatcher.group(1);
-                            String argValue = argumentMatcher.group(2);
-                            if (argName.equalsIgnoreCase("delay") || argName.equalsIgnoreCase("del") || argName.equalsIgnoreCase("d")) {
-                                Matcher delayMatcher = Pattern.compile("^(\\d+)(\\w+)$").matcher(argValue);
-                                if (delayMatcher.matches()) {
-                                    long delayValue = Long.parseLong(delayMatcher.group(1));
-                                    String delayMetric = delayMatcher.group(2);
-                                    if (delayMetric.equalsIgnoreCase("t") || delayMetric.equalsIgnoreCase("tick"))
-                                        delay = delayValue;
-                                    else if (delayMetric.equalsIgnoreCase("s") || delayMetric.equalsIgnoreCase("sec"))
-                                        delay = delayValue * 20;
-                                    else if (delayMetric.equalsIgnoreCase("m") || delayMetric.equalsIgnoreCase("min"))
-                                        delay = delayValue * 20 * 60;
-                                    else
-                                        Main.logger().warn("Неверная единица измерения в '" + actionArgumentsMatcher.group(0) + "': '" + delayMetric + "'!");
-                                } else {
-                                    AbilityPlugin.logger().warn("Значение параметра '" + argName + "' имеет неверный формат: '" + argValue + "'!");
-                                }
-                            } else if (argName.equalsIgnoreCase("period") || argName.equalsIgnoreCase("per") || argName.equalsIgnoreCase("p")) {
-                                Matcher periodMatcher = Pattern.compile("^(\\d+)(\\w+)$").matcher(argValue);
-                                if (periodMatcher.matches()) {
-                                    long periodValue = Long.parseLong(periodMatcher.group(1));
-                                    String delayMetric = periodMatcher.group(2);
-                                    if (delayMetric.equalsIgnoreCase("t") || delayMetric.equalsIgnoreCase("tick"))
-                                        period = periodValue;
-                                    else if (delayMetric.equalsIgnoreCase("s") || delayMetric.equalsIgnoreCase("sec"))
-                                        period = periodValue * 20;
-                                    else if (delayMetric.equalsIgnoreCase("m") || delayMetric.equalsIgnoreCase("min"))
-                                        period = periodValue * 20 * 60;
-                                    else
-                                        Main.logger().warn("Неверная единица измерения в '" + actionArgumentsMatcher.group(0) + "': '" + delayMetric + "'!");
-                                } else {
-                                    AbilityPlugin.logger().warn("Значение параметра '" + argName + "' имеет неверный формат: '" + argValue + "'!");
-                                }
-                            } else if (argName.equalsIgnoreCase("repeats") || argName.equalsIgnoreCase("rep") || argName.equalsIgnoreCase("r")) {
-                                Matcher repeatMathcer = Pattern.compile("^(\\d+)$").matcher(argValue);
-                                if (repeatMathcer.matches()) {
-                                    repeats = Integer.parseInt(repeatMathcer.group(1));
-                                } else {
-                                    AbilityPlugin.logger().warn("Значение параметра '" + argName + "' имеет неверный формат: '" + argValue + "'!");
-                                }
+            Matcher actionArgumentsMatcher = Pattern.compile("^(\\w+)\\((.*)\\)$").matcher(action);
+            if (actionArgumentsMatcher.matches()) {
+                action = actionArgumentsMatcher.group(1);
+                String args = actionArgumentsMatcher.group(2);
+                String[] arguments = args.split(";");
+                for (String arg : arguments) {
+                    Matcher argumentMatcher = Pattern.compile("^(\\w+)=(.*)$").matcher(arg);
+                    if (argumentMatcher.matches()) {
+                        String argName = argumentMatcher.group(1);
+                        String argValue = argumentMatcher.group(2);
+                        if (argName.equalsIgnoreCase("delay") || argName.equalsIgnoreCase("del") || argName.equalsIgnoreCase("d")) {
+                            Matcher delayMatcher = Pattern.compile("^(\\d+)(\\w+)$").matcher(argValue);
+                            if (delayMatcher.matches()) {
+                                long delayValue = Long.parseLong(delayMatcher.group(1));
+                                String delayMetric = delayMatcher.group(2);
+                                if (delayMetric.equalsIgnoreCase("t") || delayMetric.equalsIgnoreCase("tick"))
+                                    delay = delayValue;
+                                else if (delayMetric.equalsIgnoreCase("s") || delayMetric.equalsIgnoreCase("sec"))
+                                    delay = delayValue * 20;
+                                else if (delayMetric.equalsIgnoreCase("m") || delayMetric.equalsIgnoreCase("min"))
+                                    delay = delayValue * 20 * 60;
+                                else
+                                    Main.logger().error("Неверная единица измерения параметра '" + argName + "': '" + delayMetric + "'!");
                             } else {
-                                AbilityPlugin.logger().warn("Параметр '" + argName + "' не найден!");
+                                AbilityPlugin.logger().error("Значение параметра '" + argName + "' имеет неверный формат: '" + argValue + "'!");
+                            }
+                        } else if (argName.equalsIgnoreCase("period") || argName.equalsIgnoreCase("per") || argName.equalsIgnoreCase("p")) {
+                            Matcher periodMatcher = Pattern.compile("^(\\d+)(\\w+)$").matcher(argValue);
+                            if (periodMatcher.matches()) {
+                                long periodValue = Long.parseLong(periodMatcher.group(1));
+                                String delayMetric = periodMatcher.group(2);
+                                if (delayMetric.equalsIgnoreCase("t") || delayMetric.equalsIgnoreCase("tick"))
+                                    period = periodValue;
+                                else if (delayMetric.equalsIgnoreCase("s") || delayMetric.equalsIgnoreCase("sec"))
+                                    period = periodValue * 20;
+                                else if (delayMetric.equalsIgnoreCase("m") || delayMetric.equalsIgnoreCase("min"))
+                                    period = periodValue * 20 * 60;
+                                else
+                                    Main.logger().error("Неверная единица измерения параметра '" + argName + "': '" + delayMetric + "'!");
+                            } else {
+                                AbilityPlugin.logger().error("Значение параметра '" + argName + "' имеет неверный формат: '" + argValue + "'!");
+                            }
+                        } else if (argName.equalsIgnoreCase("repeats") || argName.equalsIgnoreCase("rep") || argName.equalsIgnoreCase("r")) {
+                            Matcher repeatMathcer = Pattern.compile("^(\\d+)$").matcher(argValue);
+                            if (repeatMathcer.matches()) {
+                                repeats = Integer.parseInt(repeatMathcer.group(1));
+                            } else {
+                                AbilityPlugin.logger().error("Значение параметра '" + argName + "' имеет неверный формат: '" + argValue + "'!");
                             }
                         } else {
-                            AbilityPlugin.logger().warn("Аргумент '" + arg + "' имеет неверный формат!");
+                            AbilityPlugin.logger().error("Параметр '" + argName + "' не найден!");
                         }
+                    } else {
+                        AbilityPlugin.logger().error("Аргумент '" + arg + "' имеет неверный формат!");
                     }
-                } else if (!Pattern.compile("^(\\w+)$").matcher(action).matches()) {
-                    Main.logger().warn("Неверное действие: '" + action + "'");
-                    continue;
                 }
+            } else if (!Pattern.compile("^(\\w+)$").matcher(action).matches()) {
+                Main.logger().error("Неверное действие: '" + action + "'");
+                continue;
+            }
 
+            for (Player player : players) {
                 switch (action) {
-                    case "chat": {
+                    case "message": {
                         if (value != null) {
                             ActionTask.create(boss,
-                                    () -> player.sendMessage(ColorUtil.toColor(value)),
+                                    () -> player.sendMessage(ColorUtil.toColor(value
+                                            .replace("%player%", player.getName())
+                                            .replace("%boss-name%", boss.getData().getBossName())
+                                            .replace("%phase-name%", phase.getData().getPhaseName()))),
                                     () -> !player.isOnline(),
                                     delay, period, repeats
                             );
                         } else {
-                            Main.logger().warn("[chat] Ожидается 1 аргумент: <message>");
+                            Main.logger().error("[message] Ожидается 1 аргумент: <message>");
                         }
                         break;
                     }
                     case "console": {
                         if (value != null) {
                             ActionTask.create(boss,
-                                    () -> Main.getInstance().getServer().dispatchCommand(Main.getInstance().getServer().getConsoleSender(), value),
+                                    () -> Main.getInstance().getServer().dispatchCommand(Main.getInstance().getServer().getConsoleSender(), value
+                                            .replace("%player%", player.getName())),
                                     () -> !player.isOnline(),
                                     delay, period, repeats
                             );
                         } else {
-                            Main.logger().warn("[console] Ожидается 1 аргумент: <command>");
+                            Main.logger().error("[console] Ожидается 1 аргумент: <command>");
                         }
                         break;
                     }
                     case "command": {
                         if (value != null) {
                             ActionTask.create(boss,
-                                    () -> Main.getInstance().getServer().dispatchCommand(player, value),
+                                    () -> Main.getInstance().getServer().dispatchCommand(player, value
+                                            .replace("%player%", player.getName())),
                                     () -> !player.isOnline(),
                                     delay, period, repeats
                             );
                         } else {
-                            Main.logger().warn("[command] Ожидается 1 аргумент: <command>");
+                            Main.logger().error("[command] Ожидается 1 аргумент: <command>");
                         }
                         break;
                     }
@@ -547,64 +558,16 @@ public class Ability extends AbilityBase {
                                                 () -> !player.isOnline(), delay, period, repeats
                                         );
                                     } catch (NumberFormatException e) {
-                                        Main.logger().warn("[sound] Третий аргумент должен быть числом");
+                                        Main.logger().error("[sound] Третий аргумент должен быть числом");
                                     }
                                 } catch (NumberFormatException e) {
-                                    Main.logger().warn("[sound] Второй аргумент должен быть числом");
+                                    Main.logger().error("[sound] Второй аргумент должен быть числом");
                                 }
                             } else {
-                                Main.logger().warn("[sound] Ожидается 3 аргумента: <sound>:<volume>:<pitch>");
+                                Main.logger().error("[sound] Ожидается 3 аргумента: <sound>:<volume>:<pitch>");
                             }
                         } else {
-                            Main.logger().warn("[sound] Ожидается 3 аргумента: <sound>:<volume>:<pitch>");
-                        }
-                        break;
-                    }
-                    case "world_sound": {
-                        if (value != null) {
-                            String[] elements = value.split(":");
-                            if (elements.length == 3) {
-                                try {
-                                    float volume = Float.parseFloat(elements[1]);
-                                    try {
-                                        float pitch = Float.parseFloat(elements[2]);
-                                        final Location[] location = new Location[1];
-                                        location[0] = player.getLocation();
-                                        ActionTask.create(boss,
-                                                () -> {
-                                                    if (player.isOnline())
-                                                        location[0] = player.getLocation();
-                                                    try {
-                                                        Sound sound = Sound.valueOf(elements[0]);
-                                                        location[0].getWorld().playSound(
-                                                                location[0],
-                                                                sound,
-                                                                volume,
-                                                                pitch
-                                                        );
-                                                    } catch (IllegalArgumentException e) {
-                                                        location[0].getWorld().playSound(
-                                                                location[0],
-                                                                elements[0],
-                                                                volume,
-                                                                pitch
-                                                        );
-                                                    }
-                                                },
-                                                () -> !player.isOnline(),
-                                                delay, period, repeats
-                                        );
-                                    } catch (NumberFormatException e) {
-                                        Main.logger().warn("[world_sound] Третий аргумент должен быть числом");
-                                    }
-                                } catch (NumberFormatException e) {
-                                    Main.logger().warn("[world_sound] Второй аргумент должен быть числом");
-                                }
-                            } else {
-                                Main.logger().warn("[world_sound] Ожидается 3 аргумента: <sound>:<volume>:<pitch>");
-                            }
-                        } else {
-                            Main.logger().warn("[world_sound] Ожидается 3 аргумента: <sound>:<volume>:<pitch>");
+                            Main.logger().error("[sound] Ожидается 3 аргумента: <sound>:<volume>:<pitch>");
                         }
                         break;
                     }
@@ -625,16 +588,47 @@ public class Ability extends AbilityBase {
                                                 () -> !player.isOnline(), delay, period, repeats
                                         );
                                     } catch (NumberFormatException e) {
-                                        Main.logger().warn("[particles] Второй аргумент должен быть целым числом");
+                                        Main.logger().error("[particles] Второй аргумент должен быть целым числом");
                                     }
                                 } catch (IllegalArgumentException e) {
-                                    Main.logger().warn("[particles] Первый аргумент должен быть названием частицы");
+                                    Main.logger().error("[particles] Первый аргумент должен быть названием частицы");
                                 }
                             } else {
-                                Main.logger().warn("[particles] Ожидается 2 аргумента: <particle>:<count>");
+                                Main.logger().error("[particles] Ожидается 2 аргумента: <particle>:<count>");
                             }
                         } else {
-                            Main.logger().warn("[particles] Ожидается 2 аргумента: <particle>:<count>");
+                            Main.logger().error("[particles] Ожидается 2 аргумента: <particle>:<count>");
+                        }
+                        break;
+                    }
+                    case "effect": {
+                        if (value != null) {
+                            String[] elements = value.split(":");
+                            if (elements.length == 3) {
+                                PotionEffectType effectType = PotionEffectType.getByName(elements[0]);
+                                if (effectType != null) {
+                                    try {
+                                        int level = Integer.parseInt(elements[1]);
+                                        try {
+                                            int duration = Integer.parseInt(elements[2]);
+                                            ActionTask.create(boss,
+                                                    () -> EffectUtil.addEffects(player, List.of(new PotionEffect(effectType, duration, level))),
+                                                    () -> !player.isOnline(), delay, period, repeats
+                                            );
+                                        } catch (NumberFormatException e) {
+                                            Main.logger().error("[effect] Третий аргумент должен быть целым числом");
+                                        }
+                                    } catch (NumberFormatException e) {
+                                        Main.logger().error("[effect] Второй аргумент должен быть целым числом");
+                                    }
+                                } else {
+                                    Main.logger().error("[effect] Первый аргумент должен быть названием эффекта");
+                                }
+                            } else {
+                                Main.logger().error("[effect] Ожидается 3 аргумента: <effect>:<level>:<duration>");
+                            }
+                        } else {
+                            Main.logger().error("[effect] Ожидается 3 аргумента: <effect>:<level>:<duration>");
                         }
                         break;
                     }
@@ -648,26 +642,28 @@ public class Ability extends AbilityBase {
                                     () -> {
                                         try {
                                             Bindings bindings = engine.createBindings();
-                                            bindings.put("params", value);
+                                            bindings.put("arg", value);
                                             bindings.put("boss", boss);
                                             bindings.put("player", player);
                                             engine.eval(Files.newBufferedReader(actionFile.toPath(), StandardCharsets.UTF_8), bindings);
                                         } catch (ScriptException e) {
-                                            Main.logger().warn("При выполнении скрипта '" + finalAction + ".js' произошла ошибка!");
+                                            Main.logger().error("[" + finalAction + "] При выполнении скрипта '" + finalAction + ".js' произошла ошибка!");
+                                            Main.logger().error(e.getMessage());
                                         } catch (IOException e) {
-                                            Main.logger().warn("Файл '" + finalAction + ".js' не найден!");
+                                            Main.logger().error("[" + finalAction + "] Файл '" + finalAction + ".js' не найден!");
                                         }
                                     }, delay, period, repeats
                             );
                         } else {
-                            Main.logger().warn("Файл '" + action + ".js' не найден!");
+                            Main.logger().error("[" + action + "] Файл '" + action + ".js' не найден!");
                         }
                     }
                 }
             }
         }
     }
-    private void execute(Map<String, String> bossActions, Map<String, String> playersActions, double playersActionsRadius, Map<String, String> fightersActions) {
+
+    private void execute(List<String> bossActions, List<String> playersActions, double playersActionsRadius, List<String> fightersActions) {
         executeBosses(bossActions);
         executePlayers(playersActions, boss.getEntity().getNearbyEntities(playersActionsRadius, playersActionsRadius, playersActionsRadius).stream()
                 .filter(x -> x instanceof Player)
@@ -675,8 +671,8 @@ public class Ability extends AbilityBase {
                 .map(x -> (Player) x)
                 .collect(Collectors.toList()));
         executePlayers(fightersActions, boss.getDamageMap().keySet().stream()
-                .map(x -> Main.getInstance().getServer().getPlayer(x))
-                .collect(Collectors.toList()));
+                .map(Bukkit::getPlayer)
+                .toList());
     }
 
     @Override
@@ -696,5 +692,6 @@ public class Ability extends AbilityBase {
             execute(deathActions, deathPlayersActions, deathPlayersActionsRadius, deathFightersActions);
         else if (reason == StopReason.PHASE_CHANGING)
             execute(notDeathActions, notDeathPlayersActions, notDeathPlayersActionsRadius, notDeathFightersActions);
+        ActionTask.stopAll();
     }
 }
