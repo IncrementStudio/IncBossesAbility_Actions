@@ -17,10 +17,10 @@ public final class Main extends AbilityPlugin {
 
     @Override
     public void onAbilityEnable() {
-        File bossesActionsDirectory = new File("plugins//IncBosses//abilities//" + Main.getInstance().getName() + "//actions//bosses");
+        File bossesActionsDirectory = new File("plugins//IncBosses//abilities//" + Main.getInstance().getName() + "//bosses");
         if (!bossesActionsDirectory.exists())
             bossesActionsDirectory.mkdirs();
-        File playersActionsDirectory = new File("plugins//IncBosses//abilities//" + Main.getInstance().getName() + "//actions//players");
+        File playersActionsDirectory = new File("plugins//IncBosses//abilities//" + Main.getInstance().getName() + "//players");
         if (!playersActionsDirectory.exists())
             playersActionsDirectory.mkdirs();
     }

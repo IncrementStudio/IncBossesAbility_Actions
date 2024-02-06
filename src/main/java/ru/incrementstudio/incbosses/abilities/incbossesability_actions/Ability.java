@@ -385,8 +385,39 @@ public class Ability extends AbilityBase {
                     }
                     break;
                 }
+                case "effect": {
+                    if (value != null) {
+                        String[] elements = value.split(":");
+                        if (elements.length == 3) {
+                            PotionEffectType effectType = PotionEffectType.getByName(elements[0]);
+                            if (effectType != null) {
+                                try {
+                                    int level = Integer.parseInt(elements[1]);
+                                    try {
+                                        int duration = Integer.parseInt(elements[2]);
+                                        ActionTask.create(boss,
+                                                () -> EffectUtil.addEffects(boss.getEntity(), List.of(new PotionEffect(effectType, duration, level))),
+                                                () -> boss.getEntity() == null, delay, period, repeats
+                                        );
+                                    } catch (NumberFormatException e) {
+                                        Main.logger().error("[effect] Третий аргумент должен быть целым числом");
+                                    }
+                                } catch (NumberFormatException e) {
+                                    Main.logger().error("[effect] Второй аргумент должен быть целым числом");
+                                }
+                            } else {
+                                Main.logger().error("[effect] Первый аргумент должен быть названием эффекта");
+                            }
+                        } else {
+                            Main.logger().error("[effect] Ожидается 3 аргумента: <effect>:<level>:<duration>");
+                        }
+                    } else {
+                        Main.logger().error("[effect] Ожидается 3 аргумента: <effect>:<level>:<duration>");
+                    }
+                    break;
+                }
                 default: {
-                    File actionFile = new File("plugins//IncBosses//abilities//" + Main.getInstance().getName() + "//actions//bosses//" + action + ".js");
+                    File actionFile = new File("plugins//IncBosses//abilities//" + Main.getInstance().getName() + "//bosses//" + action + ".js");
                     if (actionFile.exists()) {
                         NashornScriptEngineFactory factory = new NashornScriptEngineFactory();
                         ScriptEngine engine = factory.getScriptEngine();
@@ -633,7 +664,7 @@ public class Ability extends AbilityBase {
                         break;
                     }
                     default: {
-                        File actionFile = new File("plugins//IncBosses//abilities//" + Main.getInstance().getName() + "//actions//players//" + action + ".js");
+                        File actionFile = new File("plugins//IncBosses//abilities//" + Main.getInstance().getName() + "//players//" + action + ".js");
                         if (actionFile.exists()) {
                             NashornScriptEngineFactory factory = new NashornScriptEngineFactory();
                             ScriptEngine engine = factory.getScriptEngine();
