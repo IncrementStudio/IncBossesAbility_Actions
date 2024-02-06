@@ -372,14 +372,14 @@ abilities:
 
 Тогда наш скрипт будет выглядеть так:
 
-```nashorn js
+```js
 if (arg != null) {
 	time = parseInt(arg);
 	player.setFireTicks(time);
 }
 ```
 
-Теперь мы можем настроить способность так, чтобы каждую секунду всех игроков в радиусе 5 блоков поджигало на 2 секунды:
+Теперь мы можем настроить способность так, чтобы в течении всей фазы каждую секунду всех игроков в радиусе 5 блоков поджигало на 2 секунды:
 ```yaml
 abilities:
   actions:
@@ -391,8 +391,8 @@ abilities:
 
 Таким образом можно создавать абсолютно любые действия, имея даже небольшие знания **_Nashorn JS_** и _**Java**!_
 
-Статьи, которые могут помочь вам в понимании Nashorn:
-- [Введение в Nashorn](https://habr.com/ru/articles/195870/) (Русский)
-- [Introduction to Nashorn](https://www.baeldung.com/java-nashorn) (Английский)
+Статьи, которые могут помочь вам в изучении _**Nashorn**_:
+- [Введение в Nashorn](https://habr.com/ru/articles/195870/) _(Русский)_
+- [Introduction to Nashorn](https://www.baeldung.com/java-nashorn) _(Английский)_
 ---
 <p align="right">С наилучшими пожеланиями<br>Команда IncrementStudio++</p>
