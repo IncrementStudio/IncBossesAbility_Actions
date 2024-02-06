@@ -501,6 +501,10 @@ public class Ability extends AbilityBase {
                             Matcher repeatMathcer = Pattern.compile("^(\\d+)$").matcher(argValue);
                             if (repeatMathcer.matches()) {
                                 repeats = Integer.parseInt(repeatMathcer.group(1));
+                            } else if (argValue.equalsIgnoreCase("while_alive")) {
+                                repeats = -1;
+                            } else if (argValue.equalsIgnoreCase("while_phase")) {
+                                repeats = -2;
                             } else {
                                 AbilityPlugin.logger().error("Значение параметра '" + argName + "' имеет неверный формат: '" + argValue + "'!");
                             }
