@@ -11,9 +11,6 @@
 
     <name>IncBossesAbility_Actions</name>
 
-    <description>Модуль для плагина IncBosses, добавляющий возможность выполнения различных действий при спавне, смерти
-        или смене фаз босса!
-    </description>
     <properties>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
